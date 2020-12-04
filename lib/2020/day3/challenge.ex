@@ -34,10 +34,11 @@ defmodule AdventOfCode.Year2020.Day3.Challenge do
   end
 
   defp iterate_down_steps(list, 0), do: list
-  defp iterate_down_steps([_head | tail], down_steps), do:
-    iterate_down_steps(tail, down_steps - 1)
-  defp iterate_down_steps(list, _), do: list
 
+  defp iterate_down_steps([_head | tail], down_steps),
+    do: iterate_down_steps(tail, down_steps - 1)
+
+  defp iterate_down_steps(list, _), do: list
 
   defp check_topology([]), do: 0
 

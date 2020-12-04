@@ -42,9 +42,10 @@ defmodule AdventOfCode.Year2020.Day3.ChallengeTest do
     end
 
     test "when valid input", context do
-      expected = 2698900776
+      expected = 2_698_900_776
+
       assert Challenge.traverse_local_geology_multiple_slopes("input", context.valid_params) ==
-        expected
+               expected
     end
   end
 end
