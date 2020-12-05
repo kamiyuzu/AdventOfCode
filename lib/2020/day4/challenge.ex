@@ -26,13 +26,19 @@ defmodule AdventOfCode.Year2020.Day4.Challenge do
       end
     end
 
-    defp get_erroed_fields(fields), do: fields |> Enum.map(&validate_field/1) |> Enum.filter(&(&1 == :error))
+    defp get_erroed_fields(fields),
+      do: fields |> Enum.map(&validate_field/1) |> Enum.filter(&(&1 == :error))
 
     defp validate_field({:byr, value}), do: validate_year_field(value, 1920, 2002)
     defp validate_field({:iyr, value}), do: validate_year_field(value, 2010, 2020)
     defp validate_field({:eyr, value}), do: validate_year_field(value, 2020, 2030)
-    defp validate_field({:hgt, <<inches::binary-size(2)>> <> "in"}), do: validate_height_field(inches, 59, 76)
-    defp validate_field({:hgt, <<centimeters::binary-size(3)>> <> "cm"}), do: validate_height_field(centimeters, 150, 193)
+
+    defp validate_field({:hgt, <<inches::binary-size(2)>> <> "in"}),
+      do: validate_height_field(inches, 59, 76)
+
+    defp validate_field({:hgt, <<centimeters::binary-size(3)>> <> "cm"}),
+      do: validate_height_field(centimeters, 150, 193)
+
     defp validate_field({:ecl, value}) when value in @valid_eye_color, do: :ok
     defp validate_field({:cid, _value}), do: :ok
 
@@ -45,14 +51,15 @@ defmodule AdventOfCode.Year2020.Day4.Challenge do
     end
 
     defp validate_field({:hcl, "#" <> <<hair_color::binary-size(6)>>}) do
-        valid_characters =
-          hair_color
+      valid_characters =
+        hair_color
         |> String.graphemes()
         |> Enum.map(&validate_hair_color_character/1)
         |> Enum.filter(&(&1 == :ok))
 
-        length(valid_characters) == 6
+      length(valid_characters) == 6
     end
+
     defp validate_field(_), do: :error
 
     defp validate_hair_color_character(hair_color_character)
@@ -72,14 +79,16 @@ defmodule AdventOfCode.Year2020.Day4.Challenge do
     defp validate_year_field(value, start_year, ending_year) do
       parsed_value = String.to_integer(value)
 
-      case parsed_value >= start_year and parsed_value <= ending_year and String.length(value) == 4 do
+      case parsed_value >= start_year and parsed_value <= ending_year and
+             String.length(value) == 4 do
         false -> :error
         true -> :ok
       end
     end
 
     defp validate_height_field(height, start_height, ending_height) do
-      case String.to_integer(height) >= start_height and String.to_integer(height) <= ending_height do
+      case String.to_integer(height) >= start_height and
+             String.to_integer(height) <= ending_height do
         false -> :error
         true -> :ok
       end
