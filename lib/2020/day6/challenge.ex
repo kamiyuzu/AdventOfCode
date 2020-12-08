@@ -5,7 +5,7 @@ defmodule AdventOfCode.Year2020.Day6.Challenge do
 
   @path "test/fixtures/2020/day6/"
 
-  @spec sum_group_answers(String.t()) :: any()
+  @spec sum_group_answers(String.t()) :: integer()
   def sum_group_answers(input) do
     input
     |> parse_input()
@@ -61,6 +61,7 @@ defmodule AdventOfCode.Year2020.Day6.Challenge do
   defp check_individual_response_with_group(response, group, response_checked \\ true)
   defp check_individual_response_with_group(_response, _group, false), do: false
   defp check_individual_response_with_group(_response, [], response_checked), do: response_checked
+
   defp check_individual_response_with_group(response, [head | group_tail], _is_present) do
     is_present = Enum.member?(head, response)
     check_individual_response_with_group(response, group_tail, is_present)
