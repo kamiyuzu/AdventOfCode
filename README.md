@@ -19,6 +19,17 @@ asdf install
 
 - Or install Erlang and Elixir on your machine.
 
+- Install docker and docker-compose from their sources.
+
+### Livebook
+
+For running the livebook just run:
+
+```
+docker-compose up
+```
+
+Navigate into the respective livebook file for seeing the solution 🚀
 ## Authors
 
 * **Alberto Revuelta Arribas** - *initial work* [kamigari](https://github.com/kamigari)
