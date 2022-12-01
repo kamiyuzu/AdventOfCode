@@ -1,0 +1,84 @@
+# Advent of code - day 1
+
+## Testing input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+test_input = File.read!("/advent-of-code/data/lib/2022/day1/test_input")
+```
+
+## First star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule Elf do
+  def get_elf_calories_map(input) do
+    input
+    |> String.split("\n\n")
+    |> Enum.with_index(1)
+    |> Enum.reduce(
+      %{},
+      fn {elf_calories_string, elf_number}, acc ->
+        amount_of_calories =
+          elf_calories_string
+          |> String.split("\n", trim: true)
+          |> Enum.map(&String.to_integer(&1))
+          |> Enum.sum()
+
+        Map.put(acc, elf_number, amount_of_calories)
+      end
+    )
+  end
+
+  def get_most_calories_elf_entry(map) do
+    Enum.max_by(map, fn {_key, calory_amount} -> calory_amount end, &>/2)
+  end
+
+  def get_most_calories_elf(input) do
+    input
+    |> get_elf_calories_map()
+    |> get_most_calories_elf_entry()
+    |> elem(1)
+  end
+end
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+Elf.get_most_calories_elf(test_input)
+```
+
+## Real input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input = File.read!("/advent-of-code/data/lib/2022/day1/real_input")
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+Elf.get_most_calories_elf(input)
+```
+
+## Second star
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+elf_calorie_map = Elf.get_elf_calories_map(input)
+
+three_top_elves_map =
+  Enum.reduce(1..3, %{}, fn _x, acc ->
+    {elf_number, calories} =
+      elf_calorie_map |> Map.drop(Map.keys(acc)) |> Elf.get_most_calories_elf_entry()
+
+    Map.put(acc, elf_number, calories)
+  end)
+
+Enum.sum(Map.values(three_top_elves_map))
+```
