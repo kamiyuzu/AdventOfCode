@@ -1,0 +1,127 @@
+# Advent of code - day 4
+
+## Section
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+test_input = File.read!("/advent-of-code/data/lib/2022/day4/test_input")
+```
+
+## First star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule CampCleanup do
+  def parse_input(input), do: String.split(input, "\n", trim: true)
+
+  def parse_pairs(pairs_enum) do
+    pairs_enum
+    |> Enum.map(fn pair_item ->
+      [first_pair, second_pair] = String.split(pair_item, ",")
+      [pair1_1, pair1_2] = String.split(first_pair, "-")
+      [pair2_1, pair2_2] = String.split(second_pair, "-")
+      [pair1_1, pair1_2, pair2_1, pair2_2]
+    end)
+  end
+
+  def check_if_pairs_contained(pair_item_parsed) do
+    Enum.map(pair_item_parsed, fn [pair1_1, pair1_2, pair2_1, pair2_2] ->
+      case (:binary.decode_unsigned(pair2_1) in :binary.decode_unsigned(pair1_1)..:binary.decode_unsigned(
+              pair1_2
+            ) and
+              :binary.decode_unsigned(pair2_2) in :binary.decode_unsigned(pair1_1)..:binary.decode_unsigned(
+                pair1_2
+              )) or
+             (:binary.decode_unsigned(pair1_1) in :binary.decode_unsigned(pair2_1)..:binary.decode_unsigned(
+                pair2_2
+              ) and
+                :binary.decode_unsigned(pair1_2) in :binary.decode_unsigned(pair2_1)..:binary.decode_unsigned(
+                  pair2_2
+                )) do
+        true -> 1
+        false -> 0
+      end
+    end)
+  end
+
+  def assignment_pairs_contains(input) do
+    input
+    |> parse_input()
+    |> parse_pairs()
+    |> check_if_pairs_contained()
+    |> Enum.sum()
+  end
+end
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+CampCleanup.assignment_pairs_contains(test_input)
+```
+
+## Real input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input = File.read!("/advent-of-code/data/lib/2022/day4/real_input")
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+CampCleanup.assignment_pairs_contains(input)
+```
+
+## Second star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule CampCleanup2 do
+  alias CampCleanup
+
+  def check_if_pairs_overlapped(pair_item_parsed) do
+    Enum.map(pair_item_parsed, fn [pair1_1, pair1_2, pair2_1, pair2_2] ->
+      case :binary.decode_unsigned(pair2_1) in :binary.decode_unsigned(pair1_1)..:binary.decode_unsigned(
+             pair1_2
+           ) or
+             :binary.decode_unsigned(pair2_2) in :binary.decode_unsigned(pair1_1)..:binary.decode_unsigned(
+               pair1_2
+             ) or
+             :binary.decode_unsigned(pair1_1) in :binary.decode_unsigned(pair2_1)..:binary.decode_unsigned(
+               pair2_2
+             ) or
+             :binary.decode_unsigned(pair1_2) in :binary.decode_unsigned(pair2_1)..:binary.decode_unsigned(
+               pair2_2
+             ) do
+        true -> 1
+        false -> 0
+      end
+    end)
+  end
+
+  def assignment_pairs_overlapped(input) do
+    input
+    |> CampCleanup.parse_input()
+    |> CampCleanup.parse_pairs()
+    |> check_if_pairs_overlapped()
+    |> Enum.sum()
+  end
+end
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+CampCleanup2.assignment_pairs_overlapped(test_input)
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+CampCleanup2.assignment_pairs_overlapped(input)
+```
