@@ -1,6 +1,6 @@
 <!-- livebook:{"persist_outputs":true} -->
 
-# Advent of code - day 2
+# Advent of code - day 3
 
 ## Testing input
 
