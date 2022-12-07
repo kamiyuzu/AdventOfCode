@@ -1,0 +1,187 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Advent of code - day 2
+
+## Testing input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+test_input = File.read!("/advent-of-code/data/lib/2022/day3/test_input")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"vJrwpWtwJgWrhcsFMMfFFhFp\njqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL\nPmmdzqPrVvPwwTWBwg\nwMqvLMZHhHMvwLHjbvcjnnSBnvTQFn\nttgJtRGJQctTZtZT\nCrZsJsPPZsGzwwsLwLmpwMDw\n"
+```
+
+## First star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule RucksackReorganization do
+  def parse_input(input), do: String.split(input, "\n", trim: true)
+
+  def compartments_rucksacks(rucksacks, compartments \\ 2) do
+    Enum.map(rucksacks, fn rucksack ->
+      Enum.map(0..(compartments - 1), fn compartment ->
+        init_range = compartment * div(String.length(rucksack), compartments)
+        last_range = (compartment + 1) * div(String.length(rucksack), compartments) - 1
+
+        String.slice(rucksack, init_range..last_range)
+      end)
+    end)
+  end
+
+  def get_priority_values(compartments_rucksacks) do
+    Enum.map(compartments_rucksacks, fn compartments_rucksack ->
+      Enum.map(compartments_rucksack, &String.graphemes/1)
+    end)
+    |> Enum.flat_map(fn [first | tail] ->
+      (first --
+         Enum.reduce(tail, first, fn compartment_rucksack, acc ->
+           acc -- compartment_rucksack
+         end))
+      |> Enum.dedup()
+    end)
+  end
+
+  def get_priority_from_values(list_of_priorities) do
+    Enum.map(list_of_priorities, fn priority ->
+      case value = :binary.decode_unsigned(priority) do
+        value when value in ?a..?z -> value - 96
+        value when value in ?A..?Z -> value - 65 + 27
+      end
+    end)
+  end
+
+  def get_priority_sum(input) do
+    input
+    |> parse_input()
+    |> compartments_rucksacks()
+    |> get_priority_values()
+    |> get_priority_from_values()
+    |> Enum.sum()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+warning: variable "value" is unused (if the variable is not meant to be used, prefix it with an underscore)
+  /advent-of-code/data/lib/2022/day3/day3.livemd#cell:yghingheqh5dboy2r6vevb4bhtsaixxq:30: RucksackReorganization.get_priority_from_values/1
+
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, RucksackReorganization, <<70, 79, 82, 49, 0, 0, 18, ...>>, {:get_priority_sum, 1}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+RucksackReorganization.get_priority_sum(test_input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+157
+```
+
+## Real input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input = File.read!("/advent-of-code/data/lib/2022/day3/real_input")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"DPstqDdrsqdDtqrFDJDDrmtsJHflSJCLgCphgHHgRHJCRRff\nBcBGcQzVBVZcvznTTTvZcGTpCRRRfRCggLflHlhhCZpZCj\nvGQnQvnzTzNTTbVnzGBqMqwqDLdPtMmbwqqLLM\nwLRFRqvFsFRjfrHddbdbjzdH\nlcsnSJPSSVVlGmGrHzbbrGNrdzbz\nmSmlnnPlmJmncVDSlSZSlmLBCvtwBvtLCqqswsDBCTWW\npfqPrPgmmhvqdlsdWq\nnfjHLJfZcLbVtQWWtndhls\nCzJJFLzRzfDwrmggpC\nCWfllmlCDFlZZqMfmFBWmWLJVRLVwNNtRVGPpwtGpqbJ\njHndndndcjhscnhHNtRbVtLbGpJbRRcb\nHSrvnQzQSMDlLzBCfg\nBQRVbgQQBJBbBtVBSSSRWMQbdNvvRPjZjCCdPLNZNNsNCCzd\nHwpFpnlGpGZWGvjzPd\nFTDmFrrwDpFMtmQVQQcWgc\nVhbPshVDPDFWhWsgDNMMbVtmBjwBffpwBntnmnqfnswt\nQzzGrTZZdrdlTcCLpRBnmBRRjBCqtptt\nrJdGlmLTJdJrvZDbSbDSWDNbFJgD\nqrcqTBHTcHgwWWdHRjdWBglBbGPpGvvPbszGzsbPpQfPLwPz\nnFVmjhMjFJCSJsQQPQLbLpzCPQ\nSnMSVVZSJMNMZNDVFtJtNRBdqBrWrRHWZTllrrjgHq\nZqdqcrPqqrwnQqnrZqjVcqrQwwmNbzNzwbNLzvFbHLbNmBLF\nLCDsCsRTfLTDszzNbsbNNHbs\ngLfCgShfCgMPlPrVcqrQgn\nQSNSLDQDLfqqPwwBNLqgqJMMmmRRCTzHnCHhRzHmfCmh\nlGvdbdWdVvsVszpDhHmmlnMpTC\nctbdtVsbbvvsbWZFdVQJqPtgLQBDBwBQPJwJ\ndggSSDCPddRWPnSSPWRDgdSrTDsDQDTzQGGTMbsMMVsQfTfV\njmBvtFpBcBhhjljZHphztMsCbsTTCbzsqGqsfz\nhccpLmhFlcwCrPLrCPnL\nMMHZnGrCfJnfCPggSSGGSSSgLW\nqhFhRlDFDlqFsgdvJdWdDdcSvp\nwVlhqTbbRNFqswlVVRNbZfHCrntMBrTTZnJMCfnn\nsHGZscVGHJMtmRrqzRqqqTqt\nSjvvNgjLShWWhhSQNWqmrBzlRllTTgBqnRmq\nLNQWLfWhSQvLdCddWWPHMcbHHrJcDGFZCJssFM\nmSDjSVQbVGbmqDVbHmqqJTZzPHTHhhRJhwsRPcRJ\ntFfFFttFdsNntfpMMppJWwZTzJczJcZPzwWcdJ\nvNtgCrpgNptptgCCbbmjbSbvsVjSsjGG\nVCQlZJCTPRWsBsjTTT\nwvNrnbbvnhdNhLMfGsrGpRFpGpjp\ndwndHbHbbLqwwhNcLsqSHSCHJClQtJSttQDPSJ\nZlrvrdvpGBBhlDrshdqJHRPHqPTJzRPPqw\ntcftfSgFFgcgLPmPmpnqFwJRHP\npWLCcWNNNNttMNgZvlsvrBrsrjWDjB\nwgdCJgDMDwMCwDMCMJsJJfpffVpVfbfrrrrgjgllZp\nQFRhvttRthtQzzmpBWbWzWZSVpbSpl\nbtRttRLttGNqvbFHLwCdDcMwnPPJDnDD\nVhmMNllLqGLJQNhRfZHgSPfgSPTqZj\nsBwDcwBtsdzvvHZRlPRjDZTgPZ\npWvvBBcBCdzNLVQVWQlNlW\nNsSppvSjSPNBNLJJLh\nfCGtqQbZZGZQZTbtzbqbCZThddcMBddlJGhdlBMcddgLlJ\nzZFTqwLtTRFqTQwvmprnRVSsDrnvVR\nFttFTzzvlVHFzTjpbvzbFSDDdVGhdqLGWGJdVDDfsLqG\ncmBNCRnwsCcBPMfLLfJGcWhWqfdh\nBwPmZZMmZMCsnrwMrmbHHbjbSvSbjvrlHpzj\nsZQHCBFHQQQPGQCCHCHwsHFshhtSnnqjbRSSPngnhbRjqVPn\nmzLvmDvNNWvNvrzzrMTzJNjqndqbnSnnRgTdtjdbjhTt\nWzzWDlJLzLDvMWJJlMzmLJWcpHFQBpBgBHGQGBHfwwBfQQlG\ngdpFrdrmrDsqqswdtccgWWCMlChSbhqSlCzBlSqh\nTTvjrfjNJPnRQNTQjvNnCSWBVBVbClPSVSbSVhSh\nHRvnfTfvjjHZTDsmcHDsrDsdmp\nbFChjhbpbjqsntjtns\nvdWcfMHfddvrlNMNdWWTNgBqDngBBZBBQZshgSfgnD\nJlwrlrlhlcJWcWMwhWNVFpLzwPbbLRFPppVLzm\nDtBtgLvgcHzllsTwzSTg\nvhhjZrCrZdVdZVSwPMwwTTMGwT\nnmpfqrnZJbqBBvRc\nnMvSLvWSWPVPvWnSLShFLBjVbpNVGGbVQbbNcBcBBc\nsTzJsJszbbQbdQJb\nDsDrwTtsCTFhLQSShRwh\nRNFQhTQqHNNGRsNqQFNsHhFCwwPLwPqwzfPrrPBwpJSJJw\nvMMMblZjddlvWbjbBBfbwCrPPLJppwCL\njDmvcDBlBdjVglgddmvDQRNFtFRGtQhstHNsGFHV\nrhLHmZnMrRsZSstZLLtZnhSCNbbmPJVcblTNNTlccpNTjJTj\nWFgGddGFFgFDddMblpJjlTJTPc\nQGWqBBfWgBqWwFwzMGvzDqSSrHnCHsrssCRZrfRhHLfH\nHHzcWqNPmZcqFHPZGBdMRBMDlllWpRDJMl\ntTgSvPhbMDJlbJQb\nSCTtvtSPftswjvPhTgffVqmGZLmqmCCcqZzZHFNznF\nQNpppRrdZvdgzpQZNpgRRgbSwmDDvFGGqwJSsvSGSqGG\nHchWBMcBVnnWcHPjHhWcjHTqJFDGMSSqDMwJJbGwSsGGSb\ntcCVcBjPjhnWlFrCFNZflQNr\nHsVMrqrPqvvgprSrLG\nTHJWBJDwRFvBgGSzgF\nDmhfHnmQncMNVMqPqbcd\nSqZmMJqvHJBhHJLp\nwsgTVTSsPssjjFVrTrFlhLhCFlBBnHplHLLHfF\nzgggdwPrRrsrjjgRwVwdwdQTmvMvZqDZbWqqMSNWNbGQbGZN\nfBDBfLZnTLZVVmmDcQMDDV\njPFtJFpHpJqfJFrptwrJdRWRWNpQVmQRMWNVVVNVvQ\nzHwJgtFrTlslfghf\nwMwTttCCTTSTfBmPzPVZnPZLVVtbnN\nldRRRlRHggGcvcRbZsNzvBVWnnPBWv\nhdlJHgpcJccJhQdJrcrhwFMpDqCwCMBqjSqjqpTC\nfJfnwJJnnHJgJHTgjsjDccNjcbgNjm\nVdLqRRqGVqpRrPpppMBjDNmDctdsBlNjmZdZ\nPDQvPQSvpGDrTwfJzzfFnTnS\nMnHvnHHMRMzPTlDLPPRGcl\ndFnfhFVwhdBPBfGWlPcP\nJNrQFsnVtwsgvNzvmMjpzS\nBZVPFpNpcNZpmRRPpzcVNhLLnssDjjDGnqjjLDFDjq\nmMJbJvtJQQHlJDGCDnjvChDSsv\nMQwWJHdQwWrJltQrgfNPmfBcBrpBpZ\nZWZqDsZZqWsWvWLPwPbpHjdtSbSjSCSPPSCp\nMFVNMLmFmNzcTTrFrLbjdjbpCdCSbTCShRSd\nczNzLrznlGNNrMzMwDlJwJWDwJwqJDvW\nGlgchGGVShlQcQfDhzZrNFnFNFNjFzNFcn\ndwCtpwHTtPTWpdFNfJJzRzvJNR\ntLBBmWHftBttPbLwCHWTsSSQVglqgMsMBDSMGlQS\nRDDDGhGfvPPTTPTThn\nZFLMmjpCpfMZzFqmqsCmPjdVBlVBVnWBPNTVbnTV\nzHqJMCzLvftRQQHG\nnTcbnvPsvdvFzpczVZmMGg\nBCCJwSDqhQLJmMMpzGZVFVFB\nqhrwJwrJrrzJNqwWLsTTnlTlbnsvbstWsW\nvHRbqPJZvRPZhShJvTZllZtgzwlfBGBlsm\nVdQjVVCssQVrWrQmTBgBzglmgCBGml\nNnpQNpcFpNWshPRLsbSFsH\ncVGmVZVwVVMLdvcRttTdbB\nppCQrwzHBtLrttLb\nhsFJQzFWCpCqjZGVwlhlPP\nHDGRzgWhgfzVWfRpspwRwbwStSwt\nZBPPPmmmTMQMPcZrBmSptSbbQCwtlsNqCwjC\nTTLMMmZvPTrMZvFMmcmvrTccDDnfGHJgJhH" <> ...
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+RucksackReorganization.get_priority_sum(input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+7817
+```
+
+## Second star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule RucksackReorganization2 do
+  alias RucksackReorganization
+
+  def get_priority_values2(compartments_rucksacks) do
+    compartments_rucksacks
+    |> Enum.chunk_every(3)
+    |> Enum.map(fn compartments_rucksack ->
+      Enum.map(compartments_rucksack, &String.graphemes/1)
+    end)
+    |> Enum.flat_map(fn [first, second, third] ->
+      Enum.reduce(first, [], fn compartment_rucksack_item, acc ->
+        case Enum.member?(second, compartment_rucksack_item) and
+               Enum.member?(third, compartment_rucksack_item) do
+          true -> [compartment_rucksack_item | acc]
+          false -> acc
+        end
+      end)
+      |> Enum.dedup()
+    end)
+  end
+
+  def get_priority_sum2(input) do
+    input
+    |> RucksackReorganization.parse_input()
+    |> get_priority_values2()
+    |> RucksackReorganization.get_priority_from_values()
+    |> Enum.sum()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, RucksackReorganization2, <<70, 79, 82, 49, 0, 0, 12, ...>>, {:get_priority_sum2, 1}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+RucksackReorganization2.get_priority_sum2(test_input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+70
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+RucksackReorganization2.get_priority_sum2(input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+2444
+```
