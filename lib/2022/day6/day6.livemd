@@ -1,0 +1,123 @@
+# Advent of code - day 6
+
+## Testing input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+test_input = File.read!("/advent-of-code/data/lib/2022/day6/test_input")
+```
+
+## First star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule TuningTrouble do
+  def parse_input(input), do: input |> String.split("\n", trim: true) |> List.first()
+
+  def repeated_items(input, different_characters \\ 4) do
+    input
+    |> String.graphemes()
+    |> Enum.reduce_while({1, different_characters, [], :queue.new()}, fn character, acc ->
+      {index_acc, different_characters_acc, items_stored_acc, queue_acc} = acc
+
+      repeated_items_control(
+        index_acc,
+        different_characters_acc,
+        character,
+        items_stored_acc,
+        queue_acc
+      )
+    end)
+  end
+
+  defp repeated_items_control(index, 0, _, _, _), do: {:halt, index}
+
+  defp repeated_items_control(
+         index,
+         different_characters,
+         character,
+         items_stored,
+         queue
+       ) do
+    {_, queue_acc} = :queue.out(queue)
+    new_store_tail = :queue.to_list(queue_acc)
+    new_store = [character | new_store_tail]
+
+    cond do
+      new_store |> Enum.uniq() |> length() == different_characters ->
+        {:cont, {index, 0, [], [{}, {}]}}
+
+      length(items_stored) < different_characters ->
+        {:cont,
+         {index + 1, different_characters, [character | items_stored],
+          :queue.in(character, queue)}}
+
+      true ->
+        new_queue = :queue.in(character, queue_acc)
+        {:cont, {index + 1, different_characters, [character | new_store_tail], new_queue}}
+    end
+  end
+
+  def characters_processed_marker(input) do
+    input
+    |> parse_input()
+    |> repeated_items()
+  end
+end
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+TuningTrouble.characters_processed_marker(test_input)
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+TuningTrouble.characters_processed_marker("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg")
+```
+
+## Real input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input = File.read!("/advent-of-code/data/lib/2022/day6/real_input")
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+TuningTrouble.characters_processed_marker(input)
+```
+
+## Second star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule TuningTrouble2 do
+  alias TuningTrouble
+
+  def characters_processed_marker(input) do
+    input
+    |> TuningTrouble.parse_input()
+    |> TuningTrouble.repeated_items(14)
+  end
+end
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+TuningTrouble2.characters_processed_marker("mjqjpqmgbljsphdztnvjfqwrcgsmlb")
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+TuningTrouble2.characters_processed_marker(input)
+```
