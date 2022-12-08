@@ -1,6 +1,6 @@
 # Advent of code - day 4
 
-## Section
+## Testing input
 
 <!-- livebook:{"reevaluate_automatically":true} -->
 

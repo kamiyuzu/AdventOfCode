@@ -1,0 +1,198 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Advent of code - day 5
+
+## Testing input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+test_input = File.read!("/advent-of-code/data/lib/2022/day5/test_input")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"    [D]    \n[N] [C]    \n[Z] [M] [P]\n 1   2   3 \n\nmove 1 from 2 to 1\nmove 3 from 1 to 3\nmove 2 from 2 to 1\nmove 1 from 1 to 2\n"
+```
+
+## First star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule SupplyStacks do
+  def parse_input(input) do
+    [stack, movements] = String.split(input, "\n\n", trim: true)
+    {String.split(stack, "\n", trim: true), String.split(movements, "\n", trim: true)}
+  end
+
+  def parse_stacks({parsed_stack, _}) do
+    parsed_stack
+    |> Enum.map(fn item ->
+      if String.contains?(item, "["), do: parse_stack_item(item), else: []
+    end)
+    |> Enum.reduce(%{}, fn stack_items, acc ->
+      Enum.reduce(stack_items, acc, fn {stack_number, item}, acc_it ->
+        Map.update(acc_it, stack_number, [item], &[item | &1])
+      end)
+    end)
+    |> Enum.into(%{}, fn {stack_number, stack} -> {stack_number, Enum.reverse(stack)} end)
+  end
+
+  defp parse_stack_item(item) do
+    item
+    |> String.graphemes()
+    |> Enum.chunk_every(4)
+    |> Enum.with_index(1)
+    |> Enum.map(fn
+      {[_, item | _], index} when item != " " -> {index, item}
+      {[_, item | _], index} when item == " " -> {index, nil}
+    end)
+    |> Enum.reject(fn {_index, value} -> is_nil(value) end)
+  end
+
+  def parse_movements({_, parsed_movements}) do
+    Enum.map(parsed_movements, fn
+      <<"move ", stack_number_items::binary-size(1), " from ", stack_number_from::binary-size(1),
+        " to ", stack_number_to::binary-size(1)>> ->
+        {String.to_integer(stack_number_items), String.to_integer(stack_number_from),
+         String.to_integer(stack_number_to)}
+
+      <<"move ", stack_number_items::binary-size(2), " from ", stack_number_from::binary-size(1),
+        " to ", stack_number_to::binary-size(1)>> ->
+        {String.to_integer(stack_number_items), String.to_integer(stack_number_from),
+         String.to_integer(stack_number_to)}
+    end)
+  end
+
+  def move_stack_with_movements(stack, movements) do
+    Enum.reduce(movements, stack, fn {stack_number_items, stack_number_from, stack_number_to},
+                                     stack_acc ->
+      stack_items = Map.get(stack_acc, stack_number_from)
+      {items_to_move, remaining_items} = Enum.split(stack_items, stack_number_items)
+      stack_acc = Map.put(stack_acc, stack_number_from, remaining_items)
+
+      Enum.reduce(items_to_move, stack_acc, fn item, acc_it ->
+        Map.update!(acc_it, stack_number_to, &[item | &1])
+      end)
+    end)
+  end
+
+  def give_message(input) do
+    parsed_input = parse_input(input)
+    stack = parse_stacks(parsed_input)
+    movements = parse_movements(parsed_input)
+
+    stack
+    |> move_stack_with_movements(movements)
+    |> Enum.map(fn {_key, [message | _tail]} -> message end)
+    |> Enum.join()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, SupplyStacks, <<70, 79, 82, 49, 0, 0, 24, ...>>, {:give_message, 1}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+SupplyStacks.give_message(test_input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"CMZ"
+```
+
+## Real input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input = File.read!("/advent-of-code/data/lib/2022/day5/real_input")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"[M] [H]         [N]                \n[S] [W]         [F]     [W] [V]    \n[J] [J]         [B]     [S] [B] [F]\n[L] [F] [G]     [C]     [L] [N] [N]\n[V] [Z] [D]     [P] [W] [G] [F] [Z]\n[F] [D] [C] [S] [W] [M] [N] [H] [H]\n[N] [N] [R] [B] [Z] [R] [T] [T] [M]\n[R] [P] [W] [N] [M] [P] [R] [Q] [L]\n 1   2   3   4   5   6   7   8   9 \n\nmove 1 from 7 to 6\nmove 1 from 9 to 4\nmove 4 from 9 to 6\nmove 1 from 2 to 3\nmove 7 from 8 to 6\nmove 1 from 6 to 3\nmove 6 from 2 to 9\nmove 1 from 2 to 9\nmove 3 from 5 to 6\nmove 4 from 5 to 4\nmove 1 from 1 to 6\nmove 8 from 9 to 4\nmove 1 from 5 to 1\nmove 7 from 3 to 9\nmove 11 from 4 to 1\nmove 1 from 9 to 3\nmove 1 from 3 to 6\nmove 9 from 1 to 2\nmove 1 from 4 to 8\nmove 1 from 8 to 2\nmove 5 from 9 to 4\nmove 8 from 2 to 1\nmove 10 from 6 to 3\nmove 5 from 4 to 3\nmove 9 from 3 to 2\nmove 1 from 9 to 5\nmove 1 from 6 to 1\nmove 4 from 1 to 8\nmove 5 from 7 to 6\nmove 1 from 5 to 9\nmove 2 from 4 to 3\nmove 13 from 6 to 1\nmove 1 from 6 to 3\nmove 3 from 1 to 7\nmove 9 from 2 to 7\nmove 2 from 4 to 6\nmove 25 from 1 to 9\nmove 2 from 2 to 7\nmove 2 from 3 to 5\nmove 1 from 6 to 5\nmove 2 from 5 to 2\nmove 2 from 8 to 9\nmove 2 from 2 to 5\nmove 23 from 9 to 5\nmove 1 from 8 to 5\nmove 1 from 8 to 9\nmove 6 from 3 to 7\nmove 3 from 5 to 7\nmove 1 from 3 to 1\nmove 1 from 1 to 5\nmove 11 from 7 to 6\nmove 9 from 6 to 2\nmove 1 from 7 to 1\nmove 1 from 1 to 7\nmove 2 from 6 to 8\nmove 8 from 2 to 3\nmove 4 from 7 to 1\nmove 7 from 7 to 6\nmove 6 from 9 to 6\nmove 1 from 1 to 5\nmove 5 from 6 to 8\nmove 2 from 7 to 6\nmove 2 from 3 to 2\nmove 24 from 5 to 8\nmove 1 from 3 to 5\nmove 4 from 3 to 2\nmove 1 from 5 to 6\nmove 31 from 8 to 6\nmove 1 from 5 to 6\nmove 1 from 3 to 6\nmove 2 from 1 to 9\nmove 2 from 9 to 6\nmove 1 from 1 to 9\nmove 46 from 6 to 5\nmove 1 from 9 to 4\nmove 35 from 5 to 1\nmove 28 from 1 to 5\nmove 24 from 5 to 3\nmove 1 from 3 to 4\nmove 1 from 6 to 3\nmove 19 from 3 to 4\nmove 2 from 3 to 8\nmove 3 from 1 to 8\nmove 4 from 2 to 1\nmove 4 from 8 to 6\nmove 6 from 1 to 5\nmove 1 from 8 to 5\nmove 3 from 4 to 1\nmove 5 from 1 to 7\nmove 23 from 5 to 2\nmove 21 from 2 to 8\nmove 6 from 8 to 2\nmove 2 from 2 to 5\nmove 2 from 5 to 6\nmove 5 from 4 to 5\nmove 6 from 6 to 7\nmove 4 from 5 to 2\nmove 1 from 7 to 9\nmove 3 from 3 to 2\nmove 1 from 5 to 2\nmove 2 from 8 to 5\nmove 11 from 2 to 5\nmove 3 from 2 to 7\nmove 13 from 7 to 4\nmove 11 from 8 to 1\nmove 1 from 9 to 5\nmove 23 from 4 to 2\nmove 1 from 4 to 9\nmove 10 from 1 to 2\nmove 1 from 9 to 5\nmove 1 from 1 to 3\nmove 2 from 8 to 6\nmove 4 from 5 to 9\nmove 19 from 2 to 5\nmove 3 from 9 to 2\nmove 28 from 5 to 7\nmove 1 from 3 to 5\nmove 1 from 9 to 5\nmove 15 from 7 to 5\nmove 2 from 6 to 4\nmove 2 from 4 to 3\nmove 19 from 5 to 9\nmove 5 from 7 to 5\nmove 8 from 7 to 8\nmove 1 from 8 to 1\nmove 14 from 9 to 6\nmove 2 from 8 to 5\nmove 1 from 3 to 8\nmove 3 from 5 to 9\nmove 1 from 1 to 9\nmove 3 from 9 to 6\nmove 8 from 6 to 5\nmove 1 from 8 to 1\nmove 1 from 8 to 3\nmove 13 from 2 to 4\nmove 4 from 9 to 8\nmove 4 from 4 to 1\nmove 1 from 6 to 1\nmove 2 from 3 to 4\nmove 2 from 1 to 7\nmove 10 from 5 to 1\nmove 2 from 5 to 2\nmove 7 from 4 to 7\nmove 6 from 6 to 7\nmove 1 from 9 to 7\nmove 3 from 7 to 1\nmove 7 from 2 to 7\nmove 1 from 6 to 3\nmove 1 from 6 to 9\nmove 8 from 7 to 8\nmove 2 from 7 to 6\nmove 8 from 7 to 9\nmove 17 from 1 to 7\nmove 13 from 8 to 5\nmove 2 from 7 to 1\nmove 2 from 6 to 3\nmove 9 from 7 to 6\nmove 5 from 7 to 6\nmove 1 from 4 to 5\nmove 3 from 5 to 9\nmove 4 from 9 to 2\nmove 2 from 8 to 6\nmove 1 from 7 to 9\nmove 4 from 9 to 1\nmove 12 from 6 to 2\nmove 10 from 2 to 6\nmove 4 from 9 to 4\nmove 6 from 1 to 6\nmove 2 from 7 to 8\nmove 2 from 8 to 4\nmove 1 from 8 to 1\nmove 8 from 4 to 7\nmove 5 from 5 to 2\nmove 3 from 4 to 1\nmove 3 from 2 to 8\nmove 2 from 8 to 4\nmove 1 from 4 to 5\nmove 3 from 2 to 1\nmove 2 from 9 to 8\nmove 11 from 6 to 5\nmove 4 from 7 to 2\nmove 1 from 3 to 7\nmove 1 from 8 to 5\nmove 8 from 6 to 4\nmove 2 from 3 to 7\nmove 1 from 6 to 2\nmove 15 from 5 to 3\nmove 15 from 3 to 5\nmove 5 from 1 to 6\nmove 12 from 2 to 8\nmove 4 from 7 to 3\nmove 4 from 6 to 3\nmove 7 from 4 to 3\nmove 8 from 3 to 8\nmove 1 from 6 to 8\nmove 10 from 5 to 3\nmove 8 from" <> ...
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+SupplyStacks.give_message(input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"QPJPLMNNR"
+```
+
+## Second star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule SupplyStacks2 do
+  alias SupplyStacks
+
+  def move_stack_with_movements(stack, movements) do
+    Enum.reduce(movements, stack, fn {stack_number_items, stack_number_from, stack_number_to},
+                                     stack_acc ->
+      stack_items = Map.get(stack_acc, stack_number_from)
+      {items_to_move, remaining_items} = Enum.split(stack_items, stack_number_items)
+      stack_acc = Map.put(stack_acc, stack_number_from, remaining_items)
+      Map.update!(stack_acc, stack_number_to, &Kernel.++(items_to_move, &1))
+    end)
+  end
+
+  def give_message(input) do
+    parsed_input = SupplyStacks.parse_input(input)
+    stack = SupplyStacks.parse_stacks(parsed_input)
+    movements = SupplyStacks.parse_movements(parsed_input)
+
+    stack
+    |> move_stack_with_movements(movements)
+    |> Enum.map(fn {_key, [message | _tail]} -> message end)
+    |> Enum.join()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, SupplyStacks2, <<70, 79, 82, 49, 0, 0, 11, ...>>, {:give_message, 1}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+SupplyStacks2.give_message(test_input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"MCD"
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+SupplyStacks2.give_message(input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"BQDNWJPVJ"
+```
