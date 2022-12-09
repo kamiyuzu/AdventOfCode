@@ -1,0 +1,173 @@
+# Advent of code - day 7
+
+## Testing input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+test_input = File.read!("/advent-of-code/data/lib/2022/day7/test_input")
+```
+
+## First star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule NoSpaceLeftOnDevice do
+  @node %{total_size: 0, files: %{}}
+
+  def parse_input(input), do: String.split(input, "\n", trim: true)
+
+  def get_parsed_directory(parsed_input) do
+    parsed_input
+    |> Enum.reduce({[], %{}}, fn parsed_item, {pathing, acc} ->
+      cond do
+        String.starts_with?(parsed_item, "$ cd ") ->
+          parse_cd_command(parsed_item, {pathing, acc})
+
+        String.starts_with?(parsed_item, "$ ls") ->
+          {pathing, acc}
+
+        not String.starts_with?(parsed_item, "$") ->
+          parse_dir_or_file(parsed_item, {pathing, acc})
+
+        true ->
+          {pathing, acc}
+      end
+    end)
+    |> elem(1)
+  end
+
+  defp parse_cd_command("$ cd " <> location, {pathing, acc}) do
+    case location do
+      ".." ->
+        [_actual_path | tail_pathing] = pathing
+        {tail_pathing, acc}
+
+      dir ->
+        {[dir | pathing], put_in(acc, Enum.reverse([dir | pathing]), @node)}
+    end
+  end
+
+  defp parse_dir_or_file("dir " <> _dir, {pathing, acc}), do: {pathing, acc}
+
+  defp parse_dir_or_file(parsed_item, {["/"] = pathing, acc}) do
+    [size, file_ext] = String.split(parsed_item, " ")
+    size = String.to_integer(size)
+
+    {pathing,
+     acc
+     |> put_in(Enum.reverse([file_ext, :files | pathing]), size)
+     |> update_in(Enum.reverse([:total_size | pathing]), &(size + &1))}
+  end
+
+  defp parse_dir_or_file(parsed_item, {pathing, acc}) do
+    [size, file_ext] = String.split(parsed_item, " ")
+    size = String.to_integer(size)
+
+    {pathing,
+     acc
+     |> put_in(Enum.reverse([file_ext, :files | pathing]), size)
+     |> update_nested_total_sizes(pathing, size)}
+  end
+
+  defp update_nested_total_sizes(acc, [], _size), do: acc
+
+  defp update_nested_total_sizes(acc, pathing, size) do
+    [_actual_path | parent_path] = pathing
+    updated_acc = update_in(acc, Enum.reverse([:total_size | pathing]), &(size + &1))
+    update_nested_total_sizes(updated_acc, parent_path, size)
+  end
+
+  def sum_nested_directories(parsed_directory, at_most \\ 100_000) do
+    {total_size, without_size} = Map.pop(parsed_directory, :total_size, 0)
+    {_, without_files} = Map.pop(without_size, :files)
+    added_size = if total_size > at_most, do: 0, else: total_size
+
+    added_size +
+      (without_files |> Enum.map(fn {_, v} -> sum_nested_directories(v) end) |> Enum.sum())
+  end
+
+  def total_size_of_directory(input) do
+    parsed_directory = input |> parse_input() |> get_parsed_directory()
+    sum_nested_directories(parsed_directory)
+  end
+end
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+NoSpaceLeftOnDevice.total_size_of_directory(test_input)
+```
+
+## Real input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input = File.read!("/advent-of-code/data/lib/2022/day7/real_input")
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+NoSpaceLeftOnDevice.total_size_of_directory(input)
+```
+
+## Second star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule NoSpaceLeftOnDevice2 do
+  alias NoSpaceLeftOnDevice
+
+  @update_size 30_000_000
+  @filesystem_size 70_000_000
+
+  def get_smaller_directory_size(parsed_directory, space_needed, at_most \\ @update_size) do
+    parsed_directory
+    |> do_get_smaller_directory_size(space_needed, at_most)
+    |> List.flatten()
+    |> Enum.min()
+  end
+
+  defp do_get_smaller_directory_size(parsed_directory, space_needed, at_most) do
+    {total_size, without_size} = Map.pop(parsed_directory, :total_size, [])
+    {_, without_files} = Map.pop(without_size, :files)
+    added_size = if total_size < at_most and total_size > space_needed, do: total_size, else: []
+
+    [
+      added_size
+      | Enum.map(without_files, fn {_, v} ->
+          do_get_smaller_directory_size(v, space_needed, at_most)
+        end)
+    ]
+  end
+
+  def update_system(input) do
+    parsed_directory =
+      input
+      |> NoSpaceLeftOnDevice.parse_input()
+      |> NoSpaceLeftOnDevice.get_parsed_directory()
+
+    %{"/" => %{total_size: root_used_space}} = parsed_directory
+
+    space_needed = @update_size - (@filesystem_size - root_used_space)
+    get_smaller_directory_size(parsed_directory, space_needed)
+  end
+end
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+NoSpaceLeftOnDevice2.update_system(test_input)
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+NoSpaceLeftOnDevice2.update_system(input)
+```
