@@ -1,0 +1,348 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Advent of code - day 8
+
+## Testing input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+test_input = File.read!("/advent-of-code/data/lib/2022/day8/test_input")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"30373\n25512\n65332\n33549\n35390\n"
+```
+
+## First star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule TreetopTreeHouse do
+  alias TreetopTreeHouseVisibility
+
+  def parse_input(input), do: String.split(input, "\n", trim: true)
+
+  def parse_tree_map(parsed_input) do
+    parsed_input |> Enum.map(&String.graphemes/1) |> Enum.with_index(1)
+  end
+
+  def create_matrix_map(parsed_tree_map) do
+    parsed_tree_map
+    |> Enum.reduce(%{}, fn {tree_row, index_x}, acc ->
+      tree_row
+      |> Enum.with_index(1)
+      |> Enum.reduce(acc, fn {tree_row_it, index_y}, acc_it ->
+        Map.put(acc_it, {index_x, index_y}, tree_row_it)
+      end)
+    end)
+    |> Map.put(:length, length(parsed_tree_map))
+  end
+
+  defp do_get_visible_trees(parsed_tree_map) do
+    {length, tree_map} = Map.pop!(parsed_tree_map, :length)
+
+    Enum.reduce(tree_map, 0, fn {{index_x, index_y}, tree}, acc ->
+      if index_x == 1 or index_x == length or index_y == 1 or index_y == length do
+        acc + 1
+      else
+        TreetopTreeHouseVisibility.is_visible_from_here(
+          parsed_tree_map,
+          {index_x, index_y},
+          tree,
+          acc
+        )
+      end
+    end)
+  end
+
+  def get_visible_trees(input) do
+    input
+    |> parse_input()
+    |> parse_tree_map()
+    |> create_matrix_map()
+    |> do_get_visible_trees()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, TreetopTreeHouse, <<70, 79, 82, 49, 0, 0, 15, ...>>, {:get_visible_trees, 1}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule TreetopTreeHouseVisibility do
+  def is_visible_from_here(tree_map, here, tree, acc) do
+    if is_visible_from_x_right(tree_map, here, tree) or
+         is_visible_from_x_left(tree_map, here, tree) or
+         is_visible_from_y_up(tree_map, here, tree) or
+         is_visible_from_y_down(tree_map, here, tree) do
+      acc + 1
+    else
+      acc
+    end
+  end
+
+  defp is_visible_from_x_right(tree_map, here, tree) do
+    row = get_x_row_until_edge(tree_map, here, :right)
+    Enum.all?(row, &Kernel.<(&1, tree))
+  end
+
+  defp is_visible_from_x_left(tree_map, here, tree) do
+    row = get_x_row_until_edge(tree_map, here, :left)
+    Enum.all?(row, &Kernel.<(&1, tree))
+  end
+
+  defp get_x_row_until_edge(tree_map, {index_x, index_y}, :right) do
+    Enum.reduce((index_x + 1)..tree_map.length, [], fn index_x_it, acc ->
+      [Map.get(tree_map, {index_x_it, index_y}) | acc]
+    end)
+    |> Enum.reverse()
+  end
+
+  defp get_x_row_until_edge(tree_map, {index_x, index_y}, :left) do
+    Enum.reduce(1..(index_x - 1), [], fn index_x_it, acc ->
+      [Map.get(tree_map, {index_x_it, index_y}) | acc]
+    end)
+  end
+
+  defp is_visible_from_y_up(tree_map, {index_x, index_y}, tree) do
+    column = get_y_column_until_edge(tree_map, {index_x, index_y}, :up)
+    Enum.all?(column, &Kernel.<(&1, tree))
+  end
+
+  defp is_visible_from_y_down(tree_map, {index_x, index_y}, tree) do
+    column = get_y_column_until_edge(tree_map, {index_x, index_y}, :down)
+    Enum.all?(column, &Kernel.<(&1, tree))
+  end
+
+  defp get_y_column_until_edge(tree_map, {index_x, index_y}, :up) do
+    Enum.reduce(1..(index_y - 1), [], fn index_y_it, acc ->
+      [Map.get(tree_map, {index_x, index_y_it}) | acc]
+    end)
+  end
+
+  defp get_y_column_until_edge(tree_map, {index_x, index_y}, :down) do
+    Enum.reduce((index_y + 1)..tree_map.length, [], fn index_y_it, acc ->
+      [Map.get(tree_map, {index_x, index_y_it}) | acc]
+    end)
+    |> Enum.reverse()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, TreetopTreeHouseVisibility, <<70, 79, 82, 49, 0, 0, 20, ...>>,
+ {:get_y_column_until_edge, 3}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+TreetopTreeHouse.get_visible_trees(test_input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+21
+```
+
+## Real input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input = File.read!("/advent-of-code/data/lib/2022/day8/real_input")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"200120010031113332213034140102430141241124321111512323442304040044220141342121012210022220211111200\n111021120230012003124233312003010303204555454332453445353125225214221214442214301113012111020220220\n010000112330232223210123331341111021455213441355415452453433542411022110033014112420103200010200112\n210220131023203033023421012411405531115123145115445215311422135252541100222231431331003220231121021\n020112210133112114444340100410411231114131452544155151415233415312511222041221113442132231003203100\n121210122332301142321211440441113455552434332511455325315545354524142541534411112013143013120333022\n002022223332143323320030004111431434153352153321414154453442552321332341355132444030442110103203212\n212130023213100232130230411132244242133251435525323326611211534441513532233340420321144212221332012\n112201210213131241203033341411115513233426453426433653356253533133113511115222441140433214102332200\n212012000101044144022321521321444445566546646625625665232323663631331412343532242340023204432003233\n101233132121222100241254211542133266356326564552445466322626353633223221135151311240430411433022011\n200132020222314334333551152431232424524623645555522366665322366466545513112135535223102441334310202\n023113000020114221524122422222662645435544455234636242322656464245462233555511334411233402112203303\n323212301014434412315252233452332225554646452654545433445553336343544664455435323243510303023142200\n310022200424121333144123222262332322343322244646667564465544426245466232342143412141451122001041322\n212301111322001335441132334525635254352425553354565445643472236236266635446421522132452121404230333\n222212444300345211222512256444456624535343536756355746664436374344346652444335121144422222340114403\n133103420101433344253425324366444265345745457464444766674564476573243345254266312555221132304022243\n104024111323421413115464433455553477333456354575666765646757774776752425462423244113225443242031103\n102001244212344453145353232652647556546465453563544776667356374453675332254663444121345213131024201\n224444241243433331136646422564367344447534333336573546336576477746463642222264422255444411444213332\n111102440221143134255523244546456346745346547453543465664363545634575433436342252431313443241200434\n134231321331555233423635635366465473563535535586445888474374535544636375425246452265522242444124430\n234112414314111344422243544643454775656784865866884848444877466476364476356322553554245224411411221\n034400114351525345222546546744637535635657575787587675474664764764736443646462322222525151425423322\n200214241324215322354446653764777674587466544685754678446567884767437556756324542252661541311422130\n343144113253113264625454456777333344687566876677476786864558645875776364454562645333232242321313142\n343024121143435322432236376444777668467756646886688564457885758774655565674476525265433235351133020\n403402124545255442342535445764457654765745674556784877787445455686478773563733543423236235255444144\n103322531152132266562676355566367676848756788886766967585484486646776553753344443262466623351341241\n310355244513624552353465735465555764667556575665597778969594858667646774744555337236256442514154340\n023311451112523462333545544537465688645559988688956997665697964748587858337347363225646321434554144\n320135522136342345436443367666564847488558589757575579796688785767645678467555334323622425311134113\n302355525243323546577736555686874886486985688686888898966978978668487864787645754566534465541511251\n334125312126266532347576536548547584696886997768569758698995755875465674754333433642553345425533431\n341111335132225635365534457665748575977867585959997886979957965558787465664637533766462255534332423\n332515314534343636736373478687676678865555895657977886779567677978977887466835476754353523355412552\n223554423243256435734467677444784886576856669787898778968956989875566754875777467667635224535114135\n155522522343322534364735656868875656687568869667769697877887796866975856457447636733764232364431215\n242345244424435673345476658556448689589759768689899966877768987857579874745884637474453634352133231\n415255446645436567674735664645455855996887768879976678686967768687868985856885736776326622253351" <> ...
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+TreetopTreeHouse.get_visible_trees(input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+1807
+```
+
+## Second star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule TreetopTreeHouse2 do
+  alias TreetopTreeHouse
+  alias TreetopTreeHouseVisibility2
+
+  defp do_get_scenic_score(parsed_tree_map) do
+    {length, tree_map} = Map.pop!(parsed_tree_map, :length)
+
+    tree_map
+    |> Enum.reduce([], fn {{index_x, index_y}, tree}, acc ->
+      if index_x == 1 or index_x == length or index_y == 1 or index_y == length do
+        acc
+      else
+        TreetopTreeHouseVisibility2.is_visible_from_here(
+          parsed_tree_map,
+          {index_x, index_y},
+          tree,
+          acc
+        )
+      end
+    end)
+    |> Enum.max(&>/2)
+  end
+
+  def get_scenic_score(input) do
+    input
+    |> TreetopTreeHouse.parse_input()
+    |> TreetopTreeHouse.parse_tree_map()
+    |> TreetopTreeHouse.create_matrix_map()
+    |> do_get_scenic_score()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, TreetopTreeHouse2, <<70, 79, 82, 49, 0, 0, 10, ...>>, {:get_scenic_score, 1}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule TreetopTreeHouseVisibility2 do
+  def is_visible_from_here(tree_map, here, tree, acc) do
+    x_right = is_visible_from_x_right(tree_map, here, tree)
+    x_left = is_visible_from_x_left(tree_map, here, tree)
+    y_up = is_visible_from_y_up(tree_map, here, tree)
+    y_down = is_visible_from_y_down(tree_map, here, tree)
+
+    [x_right * x_left * y_up * y_down | acc]
+  end
+
+  defp is_visible_from_x_right(tree_map, here, tree) do
+    row = get_x_row_until_edge(tree_map, here, :right)
+
+    Enum.reduce_while(row, 0, fn tree_it, acc ->
+      cond do
+        tree_it > tree -> {:halt, acc + 1}
+        tree == tree_it -> {:halt, acc + 1}
+        true -> {:cont, acc + 1}
+      end
+    end)
+  end
+
+  defp is_visible_from_x_left(tree_map, here, tree) do
+    row = get_x_row_until_edge(tree_map, here, :left)
+
+    Enum.reduce_while(row, 0, fn tree_it, acc ->
+      cond do
+        tree_it > tree -> {:halt, acc + 1}
+        tree == tree_it -> {:halt, acc + 1}
+        true -> {:cont, acc + 1}
+      end
+    end)
+  end
+
+  defp get_x_row_until_edge(tree_map, {index_x, index_y}, :right) do
+    Enum.reduce((index_x + 1)..tree_map.length, [], fn index_x_it, acc ->
+      [Map.get(tree_map, {index_x_it, index_y}) | acc]
+    end)
+    |> Enum.reverse()
+  end
+
+  defp get_x_row_until_edge(tree_map, {index_x, index_y}, :left) do
+    Enum.reduce(1..(index_x - 1), [], fn index_x_it, acc ->
+      [Map.get(tree_map, {index_x_it, index_y}) | acc]
+    end)
+  end
+
+  defp is_visible_from_y_up(tree_map, {index_x, index_y}, tree) do
+    column = get_y_column_until_edge(tree_map, {index_x, index_y}, :up)
+
+    Enum.reduce_while(column, 0, fn tree_it, acc ->
+      cond do
+        tree_it > tree -> {:halt, acc + 1}
+        tree == tree_it -> {:halt, acc + 1}
+        true -> {:cont, acc + 1}
+      end
+    end)
+  end
+
+  defp is_visible_from_y_down(tree_map, {index_x, index_y}, tree) do
+    column = get_y_column_until_edge(tree_map, {index_x, index_y}, :down)
+
+    Enum.reduce_while(column, 0, fn tree_it, acc ->
+      cond do
+        tree_it > tree -> {:halt, acc + 1}
+        tree == tree_it -> {:halt, acc + 1}
+        true -> {:cont, acc + 1}
+      end
+    end)
+  end
+
+  defp get_y_column_until_edge(tree_map, {index_x, index_y}, :up) do
+    Enum.reduce(1..(index_y - 1), [], fn index_y_it, acc ->
+      [Map.get(tree_map, {index_x, index_y_it}) | acc]
+    end)
+  end
+
+  defp get_y_column_until_edge(tree_map, {index_x, index_y}, :down) do
+    Enum.reduce((index_y + 1)..tree_map.length, [], fn index_y_it, acc ->
+      [Map.get(tree_map, {index_x, index_y_it}) | acc]
+    end)
+    |> Enum.reverse()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, TreetopTreeHouseVisibility2, <<70, 79, 82, 49, 0, 0, 21, ...>>,
+ {:get_y_column_until_edge, 3}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+TreetopTreeHouse2.get_scenic_score(test_input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+8
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+TreetopTreeHouse2.get_scenic_score(input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+480000
+```
