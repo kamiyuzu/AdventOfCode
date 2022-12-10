@@ -1,0 +1,277 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Advent of code - day 8
+
+## Testing input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+test_input = File.read!("/advent-of-code/data/lib/2022/day9/test_input")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"R 4\nU 4\nL 3\nD 1\nR 4\nD 1\nL 5\nR 2\n"
+```
+
+## First star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule RopeBridge do
+  def parse_input(input), do: String.split(input, "\n", trim: true)
+
+  def parse_movements(parsed_input) do
+    {_head, _tail, movements} =
+      Enum.reduce(parsed_input, {{0, 0}, {0, 0}, MapSet.new([])}, fn parsed_movement, acc ->
+        [direction, amount] = String.split(parsed_movement, " ")
+
+        parse_movement(acc, direction, String.to_integer(amount))
+      end)
+
+    movements |> MapSet.to_list() |> length()
+  end
+
+  def parse_movement(acc, "U", amount) do
+    Enum.reduce(1..amount, acc, fn _step, {{head_x, head_y}, tail_position, acc_it} ->
+      new_position = {head_x, head_y + 1}
+      tail_movement = get_tail_movement(new_position, tail_position)
+      {new_position, tail_movement, MapSet.put(acc_it, tail_movement)}
+    end)
+  end
+
+  def parse_movement(acc, "D", amount) do
+    Enum.reduce(1..amount, acc, fn _step, {{head_x, head_y}, tail_position, acc_it} ->
+      new_position = {head_x, head_y - 1}
+      tail_movement = get_tail_movement(new_position, tail_position)
+      {new_position, tail_movement, MapSet.put(acc_it, tail_movement)}
+    end)
+  end
+
+  def parse_movement(acc, "L", amount) do
+    Enum.reduce(1..amount, acc, fn _step, {{head_x, head_y}, tail_position, acc_it} ->
+      new_position = {head_x - 1, head_y}
+      tail_movement = get_tail_movement(new_position, tail_position)
+      {new_position, tail_movement, MapSet.put(acc_it, tail_movement)}
+    end)
+  end
+
+  def parse_movement(acc, "R", amount) do
+    Enum.reduce(1..amount, acc, fn _step, {{head_x, head_y}, tail_position, acc_it} ->
+      new_position = {head_x + 1, head_y}
+      tail_movement = get_tail_movement(new_position, tail_position)
+      {new_position, tail_movement, MapSet.put(acc_it, tail_movement)}
+    end)
+  end
+
+  def get_tail_movement({head_x, head_y}, {tail_x, tail_y}) do
+    dist = abs(head_x - tail_x) + abs(head_y - tail_y)
+    x_dir = if head_x > tail_x, do: 1, else: -1
+    y_dir = if head_y > tail_y, do: 1, else: -1
+
+    cond do
+      head_y == tail_y and dist >= 2 ->
+        {tail_x + x_dir, tail_y}
+
+      head_x == tail_x and dist >= 2 ->
+        {tail_x, tail_y + y_dir}
+
+      dist > 2 ->
+        {tail_x + x_dir, tail_y + y_dir}
+
+      true ->
+        {tail_x, tail_y}
+    end
+  end
+
+  def visited_at_least_once(input) do
+    input
+    |> parse_input()
+    |> parse_movements()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, RopeBridge, <<70, 79, 82, 49, 0, 0, 21, ...>>, {:visited_at_least_once, 1}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+RopeBridge.visited_at_least_once(test_input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+13
+```
+
+## Real input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input = File.read!("/advent-of-code/data/lib/2022/day9/real_input")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"L 2\nR 1\nU 1\nD 2\nR 1\nU 2\nD 1\nR 1\nL 2\nU 2\nL 2\nR 2\nD 2\nU 2\nR 1\nU 2\nD 2\nR 1\nD 2\nU 2\nR 1\nL 1\nD 1\nR 1\nL 2\nD 1\nL 1\nR 2\nU 2\nR 2\nD 1\nR 2\nL 1\nR 2\nD 1\nL 1\nR 1\nU 2\nR 1\nL 2\nD 1\nR 1\nU 2\nR 1\nD 1\nR 1\nD 1\nU 2\nD 1\nU 1\nD 1\nL 2\nR 2\nL 2\nR 1\nD 2\nR 1\nL 1\nR 2\nL 2\nR 2\nU 1\nR 1\nL 2\nD 1\nR 1\nD 2\nU 2\nR 2\nL 1\nR 1\nU 2\nR 2\nL 2\nD 2\nR 1\nL 2\nD 1\nL 2\nD 1\nL 2\nR 1\nD 1\nL 2\nD 2\nU 1\nL 1\nR 2\nU 1\nD 1\nU 1\nL 1\nR 2\nU 2\nL 1\nR 1\nU 2\nR 2\nD 1\nU 2\nD 2\nU 2\nD 2\nL 1\nD 2\nR 1\nL 2\nU 2\nR 1\nD 2\nU 2\nD 2\nR 3\nL 2\nU 1\nD 2\nR 2\nU 3\nL 3\nU 3\nL 3\nU 1\nR 2\nL 1\nD 1\nU 1\nD 3\nL 1\nD 2\nU 1\nD 1\nR 2\nD 3\nR 1\nD 2\nL 2\nR 2\nD 1\nU 1\nL 1\nU 3\nL 1\nU 3\nD 3\nL 3\nU 3\nR 3\nU 1\nD 1\nR 3\nU 3\nD 1\nU 3\nL 3\nD 3\nR 2\nL 3\nU 2\nD 1\nU 3\nL 3\nR 2\nU 2\nR 1\nL 3\nD 3\nL 2\nR 2\nD 2\nL 3\nR 1\nL 1\nU 2\nL 2\nU 1\nL 2\nU 3\nR 1\nD 3\nR 3\nU 1\nR 3\nL 2\nD 3\nL 1\nU 3\nR 1\nU 1\nL 2\nU 3\nR 3\nL 3\nD 3\nL 2\nR 1\nU 3\nL 3\nR 3\nD 3\nL 3\nU 3\nR 3\nD 2\nR 2\nL 2\nR 3\nU 3\nL 2\nU 3\nL 3\nU 3\nR 1\nD 3\nU 1\nD 1\nL 2\nR 3\nL 3\nD 2\nL 1\nD 2\nL 3\nD 1\nL 4\nU 1\nR 3\nL 3\nR 2\nL 1\nR 1\nU 1\nD 4\nR 1\nU 2\nL 4\nU 4\nD 4\nU 2\nD 2\nU 4\nD 2\nR 4\nU 1\nL 3\nU 1\nL 1\nD 3\nR 1\nL 4\nD 4\nU 4\nR 3\nD 1\nR 1\nL 2\nR 2\nU 4\nR 3\nU 3\nD 1\nL 4\nR 3\nL 3\nR 3\nD 3\nR 4\nL 4\nR 3\nU 3\nD 3\nR 3\nL 2\nR 1\nD 3\nU 1\nR 3\nL 4\nU 2\nR 4\nU 4\nL 2\nR 1\nL 4\nR 1\nD 3\nU 4\nR 2\nD 2\nL 2\nU 2\nR 1\nL 1\nR 2\nU 4\nD 3\nR 1\nL 3\nU 2\nD 2\nL 2\nD 2\nR 2\nL 1\nU 4\nL 4\nR 3\nD 2\nR 3\nL 3\nD 1\nR 4\nU 4\nR 1\nU 3\nD 2\nR 2\nD 2\nL 3\nD 4\nL 1\nU 4\nL 4\nU 1\nD 3\nL 1\nU 1\nD 4\nL 1\nU 2\nL 2\nU 3\nL 1\nU 1\nL 1\nU 3\nR 4\nD 1\nR 1\nU 5\nR 4\nL 4\nU 1\nR 1\nD 2\nR 2\nD 3\nL 1\nD 3\nL 4\nR 1\nU 4\nD 5\nL 4\nD 5\nR 4\nU 3\nR 4\nD 3\nR 5\nU 5\nD 4\nR 1\nD 2\nU 5\nD 5\nU 5\nL 2\nD 4\nL 1\nR 1\nL 2\nD 2\nL 1\nD 4\nU 5\nD 2\nL 4\nR 3\nL 4\nU 1\nD 5\nU 3\nR 3\nL 1\nD 3\nL 1\nR 3\nL 3\nD 4\nL 3\nU 1\nD 2\nR 3\nL 3\nD 5\nU 4\nL 1\nR 3\nL 1\nU 2\nD 1\nL 2\nD 4\nL 1\nD 2\nR 2\nL 2\nD 5\nR 2\nD 1\nU 1\nD 4\nR 4\nL 3\nD 1\nU 3\nD 3\nL 5\nD 5\nL 1\nU 3\nL 5\nD 3\nR 5\nU 4\nL 3\nU 4\nL 1\nR 4\nD 1\nU 2\nR 1\nU 4\nR 2\nL 1\nR 2\nL 4\nD 2\nR 1\nD 1\nU 1\nD 1\nR 4\nL 3\nR 4\nU 3\nR 4\nU 6\nR 5\nL 4\nU 5\nD 5\nL 3\nR 2\nU 3\nD 5\nU 3\nD 4\nU 6\nD 6\nU 3\nR 3\nD 2\nR 1\nL 6\nR 2\nD 5\nL 1\nU 3\nD 2\nU 6\nL 2\nU 4\nR 3\nU 3\nL 4\nU 6\nR 4\nU 1\nL 5\nU 2\nD 4\nU 3\nL 6\nU 5\nD 4\nU 4\nR 6\nL 3\nR 2\nL 6\nD 5\nR 5\nL 4\nD 2\nR 5\nU 2\nL 5\nU 6\nD 6\nR 5\nL 1\nD 1\nU 3\nR 3\nD 2\nU 3\nR 3\nU 4\nD 4\nL 3\nR 4\nU 6\nD 5\nU 2\nR 2\nD 4\nU 3\nR 2\nU 6\nL 2\nR 3\nL 3\nU 1\nD 3\nR 3\nU 1\nD 6\nR 2\nU 2\nL 2\nR 6\nU 6\nL 1\nR 6\nL 3\nU 1\nD 2\nR 1\nD 2\nL 6\nD 1\nL 6\nR 5\nD 6\nU 3\nL 2\nR 6\nL 2\nD 4\nR 5\nL 1\nR 2\nL 4\nU 3\nD 6\nU 6\nD 4\nL 5\nU 4\nR 4\nD 1\nU 1\nR 3\nL 3\nD 7\nL 6\nR 2\nD 2\nU 7\nL 6\nR 3\nU 7\nL 6\nR 4\nU 1\nL 2\nD 1\nL 7\nR 4\nL 3\nR 5\nU 7\nR 4\nD 6\nL 6\nR 3\nL 7\nR 7\nL 2\nD 7\nU 1\nR 3\nU 6\nD 4\nU 1\nD 2\nU 4\nD 7\nR 2\nL 1\nD 2\nU 3\nL 7\nU 6\nR 2\nU 1\nR 4\nL 3\nD 7\nR 7\nL 7\nD 1\nL 4\nR 6\nL 4\nR 5\nL 4\nD 7\nR 4\nL 5\nU 7\nD 1\nR 1\nD 2\nL 7\nD 4\nR 2\nD 1\nL 7\nD 1\nL 4\nR 3\nD 6\nL 6\nU 1\nL 7\nR 4\nL 2\nU 6\nD 3\nL 1\nU 6\nD 2\nU 5\nL 5\nD 6\nU 7\nD 6\nR 4\nU 6\nR 1\nU 3\nL 1\nU 4\nR 7\nL 3\nU 6\nL 6\nU 5\nD 7\nR 4\nD 3\nU 7\nR 2\nL 2\nU 2\nL 5\nR 4\nL 2\nU 5\nD 2\nU 3\nD 2\nR 5\nL 1\nR 5\nU 3\nR 1\nD 7\nR 4\nL 6\nD 7\nU 1\nR 2\nD 6\nR 2\nU 2\nD 8\nL 7\nU 5\nL 8\nD 7\nL 5\nR 1\nU 7\nD 4\nL 4\nD 1\nL 1\nU 8\nL 7\nU 4\nL 8\nU 7\nR 6\nU 2\nR 7\nL 4\nU 2\nR 7\nU 5\nR 6\nD 1\nL 3\nD 1\nR 8\nU 5\nD 3\nU 4\nL 4\nU 5\nR 8\nD 3\nU 1\nR 8\nL 6\nU 8\nL 3\nU 2\nR 5\nD 8\nL 8\nR 3\nL 3\nD 7\nR 1\nU 2\nL 7\nD 6\nR 2\nD 6\nU 4\nD 6\nU 6\nR 7\nU 1\nL 1\nD 4\nU 8\nD 4\nL 6\nD 4\nU 5\nL 3\nU 8\nR 4\nU 3\nL 4\nR 2\nL 1\nR 1\nL 2\nD 3\nL 4\nD 6\nL 5\nD 3\nR 3\nD 4\nL 5\nR 4\nL 6\nU 5\nL 1\nD 3\nU 4\nR 6\nD 2\nU 1\nL 3\nD 9\nL 6\nU 9\nR 3\nD 8\nL 1\nR 9\nU 4\nR 2\nD 7\nR 7\nD 4\nU 8\nR 5\nL 3\nR 2\nL 3\nD 5\nL 1\nU 9\nR 7\nU 3\nL 9\nU 8\nL 6\nR 7\nU 1\nL 3\nR 8\nD 9\nU 1\nD 9\nR 8\nD 6\nL 8\nR 5\nL 6\nD 7\nR 3\nD 5\nR 4\nD 2\nL 4\nD 6\nU 3\nD 2\nR 1\nL 2\nR 8\nD 3\nL 2\nD 2\nU 2\nR 9\nU 1\nL 7\nR 6\nL 2\nR 5\nU 6\nD 7\nU 7\nR 6\nL 3\nR 7\nD 5\nL 4\nD 3\nU 7\nR 1\nU 4\nL 5\nD 7\nU 2\nL 5\nD 8\nL 7\nU 3\nD 5\nL 5\nD 7\nL 1\nU 1\nD 9\nU 3\nL 9\nU 5\nD 8\nU 6\nL 3\nR 9\nU 2\nR 8\nL 9\nU 4\nL 5\nR 3\nU 6\nR 7\nU 8\nD 3\nL 1\nD 5\nR 6\nU 9\nL 6\nD 9\nL 10\nD 4\nU 7\nD 1\nU 6\nL 2\nU 1\nR 8\nU 5\nL 7\nR 10\nU 3\nD 1\nR 5\nU 8\nR 8\nD 6\nR 10\nD 10\nL 10\nD 4\nR 5\nU 9\nR 7\nL 3\nD 5\nR 6\nU 7\nD 8\nR 8\nL 4\nR 10\nL 2\nU 7\nR 7\nD 3\nU 9\nR 5\nD 10\nU 3\nR 5\nL 8\nD 4\nU 9\nR 8\nD 2\nR 4\nL 5\nR 10\nD 5\nR 5\nU 1\nD 1\nL 1\nU 2\nD 5\nR 1\nL 10\nD 7\nL 8\nD 2\nR 6\nD 3\nL 7\nD 3\nL 4\nU 10\nR 10\nD 7\nL 4\nU 4\nR 3\nU 7\nD 7\nL 1\nD 7\nL 2\nU 5\nR 8\nU 7\nD 10\nL 8\nD 8\nR 4\nU 1\nR 1\nU 8\nD 6\nR 5\nU 2\nD 1\nR 9\nU 9\nD 10\nL 9\nU 4\nR 10\nU 7\nD 6\nL 9\nU 1\nL 10\nR 4\nD 4\nL 5\nD 5\nU 2\nD 6\nR 1\nD 5\nL 1\nD 2\nL 11\nR 2\nU 5\nR 9\nU 9\nL 11\nU 4\nL 6\nD 8\nL 6\nU 11\nR 7\nU 8\nR 10\nD 5\nU 8\nR 11\nD 3\nU 5\n" <> ...
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+RopeBridge.visited_at_least_once(input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+6354
+```
+
+## Second star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule RopeBridge2 do
+  def visited_at_least_once(input) do
+    input
+    |> parse_input()
+    |> parse_movements()
+  end
+
+  def parse_input(input), do: String.split(input, "\n", trim: true)
+
+  def parse_movements(parsed_input, number_of_tails \\ 9) do
+    tails = Enum.reduce(1..number_of_tails, %{}, fn it, acc -> Map.put(acc, it, {0, 0}) end)
+
+    {_head, _tail, movements} =
+      Enum.reduce(parsed_input, {{0, 0}, tails, MapSet.new([])}, fn parsed_movement, acc ->
+        [direction, amount] = String.split(parsed_movement, " ")
+
+        parse_movement(
+          acc,
+          parse_direction(direction),
+          String.to_integer(amount),
+          number_of_tails
+        )
+      end)
+
+    movements |> MapSet.to_list() |> length()
+  end
+
+  defp parse_direction("U"), do: {0, 1}
+  defp parse_direction("D"), do: {0, -1}
+  defp parse_direction("L"), do: {-1, 0}
+  defp parse_direction("R"), do: {1, 0}
+
+  defp parse_movement(acc, {dir_x, dir_y}, amount, length) do
+    Enum.reduce(1..amount, acc, fn step, {{head_x, head_y}, tail_positions, acc} ->
+      new_position = {head_x + dir_x, head_y + dir_y}
+      tail_movements = get_tails_movement(tail_positions, new_position, length)
+
+      {new_position, tail_movements, MapSet.put(acc, Map.get(tail_movements, length))}
+    end)
+  end
+
+  defp get_tails_movement(tail_positions, head_position, length) do
+    tail_map_with_head = Map.put(tail_positions, 0, head_position)
+
+    Enum.reduce_while(tail_map_with_head, %{}, fn {key, tail_position}, acc ->
+      if key == length do
+        {:halt, acc}
+      else
+        position = Map.get(tail_map_with_head, key)
+        tail_position = Map.get(tail_map_with_head, key + 1)
+        tail_movement = get_tail_movement(position, tail_position)
+
+        {:cont, Map.put(acc, key + 1, tail_movement)}
+      end
+    end)
+  end
+
+  defp get_tail_movement({head_x, head_y}, {tail_x, tail_y}) do
+    dist = abs(head_x - tail_x) + abs(head_y - tail_y)
+    x_dir = if head_x > tail_x, do: 1, else: -1
+    y_dir = if head_y > tail_y, do: 1, else: -1
+
+    cond do
+      head_y == tail_y and dist > 1 ->
+        {tail_x + x_dir, tail_y}
+
+      head_x == tail_x and dist > 1 ->
+        {tail_x, tail_y + y_dir}
+
+      dist > 2 ->
+        {tail_x + x_dir, tail_y + y_dir}
+
+      true ->
+        {tail_x, tail_y}
+    end
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+warning: variable "step" is unused (if the variable is not meant to be used, prefix it with an underscore)
+  /advent-of-code/data/lib/2022/day9/day9.livemd#cell:57ijjlh4agcgyjpjui7rxhpnh37rytf7:34: RopeBridge2.parse_movement/4
+
+warning: variable "tail_position" is unused (if the variable is not meant to be used, prefix it with an underscore)
+  /advent-of-code/data/lib/2022/day9/day9.livemd#cell:57ijjlh4agcgyjpjui7rxhpnh37rytf7:45: RopeBridge2.get_tails_movement/3
+
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, RopeBridge2, <<70, 79, 82, 49, 0, 0, 22, ...>>, {:get_tail_movement, 2}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+RopeBridge2.visited_at_least_once(test_input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+1
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+"R 5\nU 8\nL 8\nD 3\nR 17\nD 10\nL 25\nU 20" |> RopeBridge2.visited_at_least_once()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+31
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+test = RopeBridge2.visited_at_least_once(input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+2651
+```
