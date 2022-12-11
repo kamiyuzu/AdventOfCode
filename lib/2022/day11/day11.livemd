@@ -1,0 +1,321 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Advent of code - day 11
+
+## Testing input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+test_input = File.read!("/advent-of-code/data/lib/2022/day11/test_input")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"Monkey 0:\n  Starting items: 79, 98\n  Operation: new = old * 19\n  Test: divisible by 23\n    If true: throw to monkey 2\n    If false: throw to monkey 3\n\nMonkey 1:\n  Starting items: 54, 65, 75, 74\n  Operation: new = old + 6\n  Test: divisible by 19\n    If true: throw to monkey 2\n    If false: throw to monkey 0\n\nMonkey 2:\n  Starting items: 79, 60, 97\n  Operation: new = old * old\n  Test: divisible by 13\n    If true: throw to monkey 1\n    If false: throw to monkey 3\n\nMonkey 3:\n  Starting items: 74\n  Operation: new = old + 3\n  Test: divisible by 17\n    If true: throw to monkey 0\n    If false: throw to monkey 1\n"
+```
+
+## First star impl
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule MonkeyInTheMiddle.Logic do
+  def get_game_setup(game, monkey_item, monkey_number) do
+    case String.split(monkey_item, [":", ","], trim: true) do
+      ["Monkey " <> monkey_number] ->
+        Map.put(game, "Monkey#{monkey_number}", %{})
+
+      ["  Starting items" | items] ->
+        game
+        |> put_in(
+          ["Monkey#{monkey_number}", Access.key(:items)],
+          Stream.map(items, fn item -> item |> String.trim() |> String.to_integer() end)
+        )
+        |> put_in(
+          ["Monkey#{monkey_number}", Access.key(:end_items)],
+          :queue.new()
+        )
+        |> put_in(
+          ["Monkey#{monkey_number}", Access.key(:items_inspected)],
+          MapSet.new([])
+        )
+        |> put_in(
+          ["Monkey#{monkey_number}", Access.key(:number_items_inspected)],
+          0
+        )
+
+      ["  Operation", " new = old " <> <<operation::binary-size(1), " ", number::binary>>] ->
+        game
+        |> put_in(["Monkey#{monkey_number}", Access.key(:operation_number)], number)
+        |> put_in(["Monkey#{monkey_number}", Access.key(:operation)], operation)
+
+      ["  Test", " divisible by " <> number] ->
+        put_in(
+          game,
+          ["Monkey#{monkey_number}", Access.key(:divisible_number)],
+          String.to_integer(number)
+        )
+
+      ["    If true", " throw to monkey " <> monkey_number_true] ->
+        put_in(
+          game,
+          ["Monkey#{monkey_number}", Access.key(:monkey_true)],
+          String.to_integer(monkey_number_true)
+        )
+
+      ["    If false", " throw to monkey " <> monkey_number_false] ->
+        put_in(
+          game,
+          ["Monkey#{monkey_number}", Access.key(:monkey_false)],
+          String.to_integer(monkey_number_false)
+        )
+    end
+  end
+
+  def play(game, monkey, worry \\ 3) do
+    monkey_attr = Map.get(game, "Monkey#{monkey}")
+    items = Map.get(monkey_attr, :items)
+    end_items = monkey_attr |> Map.get(:end_items) |> :queue.to_list()
+
+    game_items =
+      items
+      |> Enum.reduce(game, fn item, game_acc ->
+        operation_number =
+          case Map.get(monkey_attr, :operation_number) do
+            "old" -> item
+            value -> String.to_integer(value)
+          end
+
+        worry_lvl =
+          apply(Kernel, String.to_existing_atom("#{Map.get(monkey_attr, :operation)}"), [
+            item,
+            operation_number
+          ])
+
+        monkey_to_throw_item =
+          if rem(div(worry_lvl, worry), Map.get(monkey_attr, :divisible_number)) == 0 do
+            Map.get(monkey_attr, :monkey_true)
+          else
+            Map.get(monkey_attr, :monkey_false)
+          end
+
+        game_acc
+        |> update_in(
+          ["Monkey#{monkey_to_throw_item}", Access.key(:end_items)],
+          &:queue.in(div(worry_lvl, worry), &1)
+        )
+        |> update_in(
+          ["Monkey#{monkey}", Access.key(:items_inspected)],
+          &MapSet.put(&1, div(worry_lvl, worry))
+        )
+        |> update_in(
+          ["Monkey#{monkey}", Access.key(:number_items_inspected)],
+          &(&1 + 1)
+        )
+      end)
+      |> put_in(["Monkey#{monkey}", :items], [])
+
+    end_items
+    |> Enum.reduce(game_items, fn item, game_acc ->
+      operation_number =
+        case Map.get(monkey_attr, :operation_number) do
+          "old" -> item
+          value -> String.to_integer(value)
+        end
+
+      worry_lvl =
+        apply(Kernel, String.to_existing_atom("#{Map.get(monkey_attr, :operation)}"), [
+          item,
+          operation_number
+        ])
+
+      monkey_to_throw_item =
+        if rem(div(worry_lvl, worry), Map.get(monkey_attr, :divisible_number)) == 0 do
+          Map.get(monkey_attr, :monkey_true)
+        else
+          Map.get(monkey_attr, :monkey_false)
+        end
+
+      game_acc
+      |> update_in(
+        ["Monkey#{monkey_to_throw_item}", Access.key(:end_items)],
+        &:queue.in(div(worry_lvl, worry), &1)
+      )
+      |> update_in(
+        ["Monkey#{monkey}", Access.key(:items_inspected)],
+        &MapSet.put(&1, div(worry_lvl, worry))
+      )
+      |> update_in(
+        ["Monkey#{monkey}", Access.key(:number_items_inspected)],
+        &(&1 + 1)
+      )
+    end)
+    |> put_in(["Monkey#{monkey}", :end_items], :queue.new())
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, MonkeyInTheMiddle.Logic, <<70, 79, 82, 49, 0, 0, 34, ...>>, {:play, 3}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+defmodule MonkeyInTheMiddle do
+  alias MonkeyInTheMiddle.Logic
+
+  def get_monkey_shenanigans(input, rounds \\ 20, worry \\ 3) do
+    input
+    |> parse_input()
+    |> parse_monkeys_actions()
+    |> play_monkey_shenanigans_for_rounds(rounds, worry)
+  end
+
+  def parse_input(input),
+    do:
+      input
+      |> String.split("\n\n", trim: true)
+      |> Enum.with_index(&{&2, String.split(&1, "\n", trim: true)})
+
+  def parse_monkeys_actions(parsed_input) do
+    Enum.reduce(parsed_input, %{}, fn {monkey_number, actions}, game ->
+      Enum.reduce(actions, game, fn action, game_acc ->
+        Logic.get_game_setup(game_acc, action, monkey_number)
+      end)
+    end)
+  end
+
+  def play_monkey_shenanigans_for_rounds(game_setup, rounds, worry) do
+    monkeys = game_setup |> Enum.to_list() |> length()
+
+    ended_game =
+      Enum.reduce(1..rounds, game_setup, fn round, game ->
+        IO.inspect(round)
+
+        Enum.reduce(0..(monkeys - 1), game, fn monkey, game_acc ->
+          Logic.play(game_acc, monkey, worry)
+        end)
+      end)
+
+    {key, attrs} =
+      Enum.max_by(ended_game, fn {_monkey, attrs} -> attrs.number_items_inspected end)
+
+    {_, attrs_2} =
+      ended_game
+      |> Map.delete(key)
+      |> Enum.max_by(fn {_monkey, attrs} -> attrs.number_items_inspected end)
+
+    attrs.number_items_inspected * attrs_2.number_items_inspected
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, MonkeyInTheMiddle, <<70, 79, 82, 49, 0, 0, 20, ...>>,
+ {:play_monkey_shenanigans_for_rounds, 3}}
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+MonkeyInTheMiddle.get_monkey_shenanigans(test_input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+10605
+```
+
+## Real input
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+input = File.read!("/advent-of-code/data/lib/2022/day11/real_input")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"Monkey 0:\n  Starting items: 66, 59, 64, 51\n  Operation: new = old * 3\n  Test: divisible by 2\n    If true: throw to monkey 1\n    If false: throw to monkey 4\n\nMonkey 1:\n  Starting items: 67, 61\n  Operation: new = old * 19\n  Test: divisible by 7\n    If true: throw to monkey 3\n    If false: throw to monkey 5\n\nMonkey 2:\n  Starting items: 86, 93, 80, 70, 71, 81, 56\n  Operation: new = old + 2\n  Test: divisible by 11\n    If true: throw to monkey 4\n    If false: throw to monkey 0\n\nMonkey 3:\n  Starting items: 94\n  Operation: new = old * old\n  Test: divisible by 19\n    If true: throw to monkey 7\n    If false: throw to monkey 6\n\nMonkey 4:\n  Starting items: 71, 92, 64\n  Operation: new = old + 8\n  Test: divisible by 3\n    If true: throw to monkey 5\n    If false: throw to monkey 1\n\nMonkey 5:\n  Starting items: 58, 81, 92, 75, 56\n  Operation: new = old + 6\n  Test: divisible by 5\n    If true: throw to monkey 3\n    If false: throw to monkey 6\n\nMonkey 6:\n  Starting items: 82, 98, 77, 94, 86, 81\n  Operation: new = old + 7\n  Test: divisible by 17\n    If true: throw to monkey 7\n    If false: throw to monkey 2\n\nMonkey 7:\n  Starting items: 54, 95, 70, 93, 88, 93, 63, 50\n  Operation: new = old + 4\n  Test: divisible by 13\n    If true: throw to monkey 2\n    If false: throw to monkey 0\n"
+```
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+MonkeyInTheMiddle.get_monkey_shenanigans(input)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+90294
+```
+
+## Second star
+
+```elixir
+# MonkeyInTheMiddle.get_monkey_shenanigans(test_input, 10000, 1)
+```
+
+```elixir
+# MonkeyInTheMiddle.get_monkey_shenanigans(input, 10000, 1)
+```
